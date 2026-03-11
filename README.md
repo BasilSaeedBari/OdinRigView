@@ -122,3 +122,9 @@ Full design specification is in [`design.md`](./design.md).
 ## License
 
 MIT — see [`LICENSE`](./LICENSE) for details.
+
+---
+
+## Tags
+
+`v1.0.0` &nbsp;`odin` &nbsp;`odin-lang` &nbsp;`windows` &nbsp;`raylib` &nbsp;`system-info` &nbsp;`desktop-app` &nbsp;`pc-specs` &nbsp;`hardware-info` &nbsp;`minimal` &nbsp;`data-oriented`
