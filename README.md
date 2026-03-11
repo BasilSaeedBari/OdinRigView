@@ -75,7 +75,7 @@ pc_info/
 
 ### Requirements
 
-- [Odin compiler](https://odin-lang.org/docs/install/) — latest stable build
+- [Odin compiler](https://odin-lang.org/docs/install/) — version dev-2026-03-nightly:6d9a611 (used for Latest Release)
 - Windows 10 or Windows 11 (x86_64)
 - Odin's `vendor:raylib` bindings (included with the compiler)
 
