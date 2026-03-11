@@ -20,8 +20,8 @@ Non-technical users who are selling their computer need one thing: a fast, reada
 
 ## Screenshots
 
-![System Information](./screenshots/SysInfo.png)
-![Drive Information](./screenshots/Drives.png)
+![System Information](./screenshots/SysInfo.PNG)
+![Drive Information](./screenshots/Drives.PNG)
 
 ---
 
