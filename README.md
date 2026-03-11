@@ -20,7 +20,8 @@ Non-technical users who are selling their computer need one thing: a fast, reada
 
 ## Screenshots
 
-> *(Add screenshots here once the app is built)*
+![System Information](./screenshots/SysInfo.png)
+![Drive Information](./screenshots/Drives.png)
 
 ---
 
