@@ -33,6 +33,15 @@ format_specs_text :: proc(data: System_Data) -> string {
 	_ = fmt.sbprintf(&sb, "VRAM:          %.1f GB\n", data.gpu.vram_gb)
 	strings.write_string(&sb, "\n")
 
+
+	_ = fmt.sbprintf(&sb, "Motherboard Manufacturer:           %s\n", data.mobo.manufacturer)
+	_ = fmt.sbprintf(&sb, "Motherboard Model:          %s\n", data.mobo.product)
+	_ = fmt.sbprintf(&sb, "Ram Slots Available:          %d Slots\n", data.mobo.ram_slot_available)
+	_ = fmt.sbprintf(&sb, "Ram Slots Used:          %d Slots\n", data.mobo.ram_slot_used)
+	_ = fmt.sbprintf(&sb, "TPM Data:          %s\n", data.mobo.tpm_version)
+	strings.write_string(&sb, "\n")
+
+
 	strings.write_string(&sb, "Drives:\n")
 	i: int
 	for i = 0; i < len(data.drives); i += 1 {

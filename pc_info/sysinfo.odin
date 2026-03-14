@@ -10,7 +10,7 @@ collect_static_system_data :: proc() -> System_Data {
 	out.cpu = get_cpu_info()
 	out.gpu = get_gpu_info()
 	out.drives = get_drive_infos()
-
+	out.mobo = get_mobo_info()
 	// RAM: take a full snapshot at startup.
 	out.ram = get_ram_info()
 

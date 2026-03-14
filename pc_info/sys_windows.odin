@@ -10,6 +10,9 @@ import time "core:time"
 import win "core:sys/windows"
 import dxgi "vendor:directx/dxgi"
 import "core:strings"
+import "core:mem"
+import "core:bytes"
+import "core:strconv"
 
 NA_STRING :: "N/A"
 
@@ -100,7 +103,9 @@ foreign kernel32 {
 
 	// https://learn.microsoft.com/en-us/windows/win32/api/sysinfoapi/nf-sysinfoapi-getphysicallyinstalledsystemmemory
 	GetPhysicallyInstalledSystemMemory :: proc(totalMemoryInKilobytes: ^u64) -> win.BOOL ---
+
 }
+
 
 // --- Registry helpers ---
 
@@ -347,6 +352,166 @@ get_gpu_info :: proc() -> GPU_Info {
 
 	out.vram_gb = bytes_to_gib_f32(u64(desc.DedicatedVideoMemory))
 	return out
+}
+
+
+// Returns a fixed array [2]int:
+//   result[0] = RAM slots currently populated (in use)
+//   result[1] = RAM slots available (empty/unpopulated)
+//
+// Windows: uses `wmic` (available on most Windows installs)
+get_ram_slot_info :: proc() -> [2]int {
+    when ODIN_OS == .Windows {
+        return _get_ram_slot_info_windows()
+    } else {
+        fmt.eprintln("get_ram_slot_info: unsupported OS")
+        return {0, 0}
+    }
+}
+
+// ─── Windows Implementation ──────────────────────────────────────────────────
+
+when ODIN_OS == .Windows {
+
+    _get_ram_slot_info_windows :: proc() -> [2]int {
+        // Get total physical memory slots from the motherboard
+        total_output, total_ok := _run_command({
+            "wmic", "memphysical", "get", "MemoryDevices", "/value",
+        })
+        defer delete(total_output)
+
+        // Get the number of populated slots (installed DIMMs)
+        used_output, used_ok := _run_command({
+            "wmic", "memorychip", "get", "DeviceLocator", "/value",
+        })
+        defer delete(used_output)
+
+        if !total_ok || !used_ok {
+            fmt.eprintln("get_ram_slot_info: failed to run wmic")
+            return {0, 0}
+        }
+
+        total_slots := _parse_wmic_int(total_output, "MemoryDevices")
+        populated    := _count_wmic_entries(used_output, "DeviceLocator")
+        available    := max(0, total_slots - populated)
+
+        return {populated, available}
+    }
+
+    // Parses a single integer value from wmic /value output.
+    // e.g. "MemoryDevices=4\r\n" → 4
+    _parse_wmic_int :: proc(output, key: string) -> int {
+    prefix := strings.concatenate({key, "="})
+    defer delete(prefix)
+
+    // ✅ Local copy for the iterator
+    src := output
+    for line in strings.split_lines_iterator(&src) {
+        trimmed := strings.trim_space(line)   // ✅ separate variable
+        if strings.has_prefix(trimmed, prefix) {
+            val_str := strings.trim_space(trimmed[len(prefix):])
+            val, ok := strconv.parse_int(val_str)
+            if ok do return val
+        }
+    }
+    return 0
+}
+
+    // Counts non-empty key=value lines to determine populated slot count.
+    // e.g. "DeviceLocator=DIMM_A1" counts as one populated slot.
+    _count_wmic_entries :: proc(output, key: string) -> int {
+    count  := 0
+    prefix := strings.concatenate({key, "="})
+    defer delete(prefix)
+
+    // ✅ Local copy for the iterator
+    src := output
+    for line in strings.split_lines_iterator(&src) {
+        trimmed := strings.trim_space(line)   // ✅ separate variable
+        if strings.has_prefix(trimmed, prefix) {
+            val := strings.trim_space(trimmed[len(prefix):])
+            if len(val) > 0 do count += 1
+        }
+    }
+    return count
+}
+
+}
+
+// ─── Shared Helper ───────────────────────────────────────────────────────────
+
+// Spawns a child process, captures its stdout, and returns the output as a
+// heap-allocated string. The caller is responsible for calling delete().
+_run_command :: proc(args: []string) -> (output: string, ok: bool) {
+    pipe_r, pipe_w, pipe_err := os.pipe()
+    if pipe_err != nil do return "", false
+    defer os.close(pipe_r)
+
+    desc := os.Process_Desc{
+        command = args,
+        stdout  = pipe_w,
+    }
+
+    process, start_err := os.process_start(desc)
+    os.close(pipe_w) // Close write-end in parent so EOF is detected
+
+    if start_err != nil do return "", false
+
+    // Read all stdout into a buffer
+    buf: bytes.Buffer
+    bytes.buffer_init_allocator(&buf, 0, 4096, context.allocator)
+    defer bytes.buffer_destroy(&buf)
+
+    tmp := make([]u8, 4096)
+    defer delete(tmp)
+
+    for {
+        n, read_err := os.read(pipe_r, tmp)
+        if n > 0 do bytes.buffer_write(&buf, tmp[:n])
+        if read_err != nil do break
+    }
+
+    state, wait_err := os.process_wait(process)
+    _ = os.process_kill(process)
+
+    if wait_err != nil || state.exit_code != 0 do return "", false
+
+    // Clone the buffer contents so the caller owns the string
+    result := strings.clone(bytes.buffer_to_string(&buf))
+    return result, true
+}
+
+
+get_mobo_info :: proc() -> MOBO_Info {
+	info: MOBO_Info = {}
+	info.manufacturer = NA_STRING
+	info.product = NA_STRING
+	info.tpm_version = "Disabled/Missing"
+	info.ram_slot_available = -1
+	info.ram_slot_used = -1
+	reg_val: string
+	ok: bool
+
+	// 1. BaseBoard Manufacturer
+	reg_val, ok = reg_get_sz(win.HKEY_LOCAL_MACHINE, "HARDWARE\\DESCRIPTION\\System\\BIOS", "BaseBoardManufacturer")
+	if ok { info.manufacturer = reg_val }
+
+	// 2. BaseBoard Product (Model)
+	// Use = instead of := to avoid redeclaration error
+	reg_val, ok = reg_get_sz(win.HKEY_LOCAL_MACHINE, "HARDWARE\\DESCRIPTION\\System\\BIOS", "BaseBoardProduct")
+	if ok { info.product = reg_val }
+
+	// 3. TPM Version
+	reg_val, ok = reg_get_sz(win.HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\TPM", "SpecVersion")
+	if ok { info.tpm_version = reg_val }
+
+	// 4. RAM Slots 
+	slots := get_ram_slot_info(); 
+	info.ram_slot_available = slots[0]
+	info.ram_slot_used = slots[1]
+	fmt.println(slots[0], slots[1]);
+
+	return info
 }
 
 // --- Drive helpers (SSD/HDD heuristic) ---

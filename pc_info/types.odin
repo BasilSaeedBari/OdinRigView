@@ -68,12 +68,22 @@ Drive_Info :: struct {
 	free_gb:    f32,    // Free bytes converted to GiB (GetDiskFreeSpaceExW); 0.0 if unknown
 }
 
+// MOBO_Info describes the motherboard/baseboard and firmware features.
+MOBO_Info :: struct {
+    manufacturer: string, // Registry: HKLM\...\BIOS\BaseBoardManufacturer; "N/A" if missing
+    product:      string, // Registry: HKLM\...\BIOS\BaseBoardProduct; "N/A" if missing
+    tpm_version:  string, // Registry: HKLM\...\TPM\SpecVersion; "Disabled/Missing" if unknown
+    ram_slot_used:    int,    // Logical slot count; -1 if unknown (Requires WMI/SMBIOS)
+	ram_slot_available: int,
+}
+
 // System_Data is the complete snapshot used by UI + clipboard formatting.
 System_Data :: struct {
 	os:     OS_Info,             // Collected once at startup
 	cpu:    CPU_Info,            // Collected once at startup
 	ram:    RAM_Info,            // Totals at startup; usage refreshed ~1Hz
 	gpu:    GPU_Info,            // Collected once at startup
+	mobo:   MOBO_Info,           // Collected once at startup
 	drives: [dynamic]Drive_Info, // Collected once at startup; caller owns freeing the dynamic array
 }
 
