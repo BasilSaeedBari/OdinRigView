@@ -10,11 +10,12 @@ Built as a clean reimplementation of [PC-Info by Adeptstack Studios](https://git
 
 Non-technical users who are selling their computer need one thing: a fast, readable summary of their PC specs they can copy and paste into a marketplace listing. OdinRigView gives them exactly that.
 
-- Displays **OS, CPU, RAM, GPU, and storage drives** in a clean, easy-to-read layout
+- Displays **OS, CPU, RAM, GPU, motherboard, and storage drives** in a clean, easy-to-read layout
+- Shows **motherboard version** and **available RAM slot count** for upgrade clarity
 - Shows a **live RAM usage bar** that refreshes every second
 - **One-click copy** formats all specs as plain text, ready to paste anywhere
 - **Dark and light mode** with a strict 5-color palette
-- **Three font sizes** (Small / Medium / Large) to suit any screen
+- **Three font sizes** (Small / Medium / Large) — always crisp, no blur
 
 ---
 
@@ -33,9 +34,10 @@ Non-technical users who are selling their computer need one thing: a fast, reada
 | CPU Info | Full name, core count, thread count, base clock (GHz) |
 | RAM Info | Total, usable, hardware-reserved, live available vs. in-use |
 | GPU Info | Full GPU name, dedicated VRAM (GB) via DXGI |
+| Motherboard Info | Manufacturer, product, version, TPM version, RAM slots used and free |
 | Drive Info | Per-drive: letter, label, format, type (SSD / NVMe / HDD), total and free space |
 | Copy to Clipboard | Clean plain-text summary of all specs, marketplace-ready |
-| Font Size Toggle | Cycles Small → Medium → Large |
+| Font Size Picker | Small / Medium / Large selector in Help & Info — no blur at any size |
 | Theme Toggle | Dark mode (default) and Light mode |
 | Side Menu | Hamburger drawer with three views: System Info, Drives, Help & Info |
 
@@ -46,7 +48,6 @@ Non-technical users who are selling their computer need one thing: a fast, reada
 | Purpose | Library |
 | :--- | :--- |
 | Window + rendering | `vendor:raylib` |
-| Immediate-mode UI | `vendor:microui` |
 | GPU info (DXGI) | `vendor:directx` |
 | Cross-platform hardware info | `core:sys/info` |
 | Windows API (RAM, drives, clipboard) | `core:sys/windows` |
@@ -65,7 +66,8 @@ pc_info/
 ├── types.odin          # All shared structs — System_Data, CPU_Info, RAM_Info, etc.
 ├── sysinfo.odin        # Platform-neutral hardware collection via core:sys/info
 ├── sys_windows.odin    # All Win32 / DXGI calls — isolated here only
-├── ui.odin             # microui layout and per-view rendering
+├── font.odin           # Font_Atlas struct, font_load_all / font_unload_all, size helpers
+├── ui.odin             # UI layout and per-view rendering
 ├── ui_theme.odin       # Color palette constants, Theme and Font_Size enums
 └── clipboard.odin      # Copy-to-clipboard and screenshot logic
 ```
@@ -96,6 +98,8 @@ odin build pc_info -out:pc_info.exe -define:RAYLIB_SHARED=false -extra-linker-fl
 
 The result is a single `pc_info.exe` with no runtime dependencies. Copy it anywhere and run it.
 
+> **Note for source builders:** `font_load_all` uploads textures to the GPU and must be called **after** `rl.InitWindow`. Calling it at package scope or before the window exists will crash.
+
 ---
 
 ## Design
@@ -122,10 +126,10 @@ Full design specification is in [`design.md`](./design.md).
 
 ## License
 
-MIT — see [`LICENSE`](./LICENSE) for details.
+MIT
 
 ---
 
 ## Tags
 
-`v1.0.0` &nbsp;`odin` &nbsp;`odin-lang` &nbsp;`windows` &nbsp;`raylib` &nbsp;`system-info` &nbsp;`desktop-app` &nbsp;`pc-specs` &nbsp;`hardware-info` &nbsp;`minimal` &nbsp;`data-oriented`
+`v1.1.0` &nbsp;`odin` &nbsp;`odin-lang` &nbsp;`windows` &nbsp;`raylib` &nbsp;`system-info` &nbsp;`desktop-app` &nbsp;`pc-specs` &nbsp;`hardware-info` &nbsp;`minimal` &nbsp;`data-oriented`
